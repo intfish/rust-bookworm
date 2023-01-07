@@ -1,0 +1,38 @@
+name: Build rust-bookworm
+
+on:
+  workflow_dispatch:
+  schedule:
+    # New image every Monday
+    - cron: "0 4 * * 1"
+
+jobs:
+  bookworm:
+    name: bookworm
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        name: Clone docker-rust
+        with:
+          repository: rust-lang/docker-rust
+          fetch-depth: '1'
+          path: 'docker-rust'
+
+      - name: Generate Dockerfile
+        run: |
+          cp -v docker-rust/*.*.*/bullseye/slim/Dockerfile Dockerfile
+          sed -i 's/FROM debian:bullseye-slim/FROM debian:bookworm-slim/g' Dockerfile
+
+      - name: Login GHCR
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build image
+        uses: docker/build-push-action@v3
+        with:
+          push: true
+          context: .
+          tags: ghcr.io/intfish/rust-bookworm:latest
